@@ -20,9 +20,12 @@ import android.os.Bundle
 import android.view.KeyEvent
 import android.view.View
 import android.view.inputmethod.EditorInfo
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
+import androidx.paging.LoadState
+import androidx.paging.LoadType
 import androidx.recyclerview.widget.DividerItemDecoration
 import com.example.android.codelabs.paging.Injection
 import com.example.android.codelabs.paging.databinding.ActivitySearchRepositoriesBinding
@@ -68,6 +71,7 @@ class SearchRepositoriesActivity : AppCompatActivity() {
         val query = savedInstanceState?.getString(LAST_SEARCH_QUERY) ?: DEFAULT_QUERY
         search(query)
         initSearch(query)
+        binding.retryButton.setOnClickListener { adapter.retry() }
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
@@ -80,6 +84,25 @@ class SearchRepositoriesActivity : AppCompatActivity() {
                 header = ReposLoadStateAdapter { adapter.retry() },
                 footer = ReposLoadStateAdapter { adapter.retry() }
         )
+        adapter.addLoadStateListener { loadType, loadState ->
+            if (loadType == LoadType.REFRESH) {
+                binding.list.visibility = toVisibility(loadState is LoadState.NotLoading)
+                binding.progressBar.visibility = toVisibility(loadState is LoadState.Loading)
+                binding.retryButton.visibility = toVisibility(loadState is LoadState.Error)
+            } else {
+                binding.list.visibility = View.VISIBLE
+                binding.progressBar.visibility = View.GONE
+                binding.retryButton.visibility = View.GONE
+                if (loadState is LoadState.Error) {
+                    Toast.makeText(
+                            this,
+                            "\uD83D\uDE28 Wooops $loadState.message}",
+                            Toast.LENGTH_LONG
+                    ).show()
+                }
+            }
+        }
+
     }
 
     private fun initSearch(query: String) {
@@ -109,16 +132,6 @@ class SearchRepositoriesActivity : AppCompatActivity() {
                 binding.list.scrollToPosition(0)
                 search(it.toString())
             }
-        }
-    }
-
-    private fun showEmptyList(show: Boolean) {
-        if (show) {
-            binding.emptyList.visibility = View.VISIBLE
-            binding.list.visibility = View.GONE
-        } else {
-            binding.emptyList.visibility = View.GONE
-            binding.list.visibility = View.VISIBLE
         }
     }
 
